@@ -2,57 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || "http://localhost:4001";
-
-type User = {
-  id: string;
-  email: string;
-  name: string;
-};
+import { fetchCurrentUserAction, logoutAction } from "../../actions/auth-actions";
+import { useAuthStore } from "../../store/auth-store";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const clearUser = useAuthStore((state) => state.clearUser);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const verifyToken = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        router.replace("/");
+    const verifySession = async () => {
+      // I always hydrate auth from server first so refresh stays authenticated.
+      const result = await fetchCurrentUserAction();
+
+      if (result.user) {
+        setUser(result.user);
+        setLoading(false);
         return;
       }
 
-      try {
-        const response = await fetch(`${AUTH_API_URL}/auth/currentuser`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          localStorage.removeItem("access_token");
-          router.replace("/");
-          return;
-        }
-
-        setUser(data.user);
-      } catch {
-        setError("Unable to validate session");
-      } finally {
-        setLoading(false);
+      clearUser();
+      if (result.error && result.error !== "Unauthorized") {
+        setError(result.error);
+      } else {
+        // If not authorized, bounce back to login right away.
+        router.replace("/");
       }
+      setLoading(false);
     };
 
-    verifyToken();
-  }, [router]);
+    verifySession();
+  }, [clearUser, router, setUser]);
 
-  const onLogout = () => {
-    localStorage.removeItem("access_token");
+  const onLogout = async () => {
+    // Logout is server-driven so token cookie is removed at the source.
+    await logoutAction();
+    clearUser();
     router.replace("/");
   };
 
