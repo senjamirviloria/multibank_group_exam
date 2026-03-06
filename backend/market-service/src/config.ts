@@ -2,6 +2,8 @@
 export const port = Number(process.env.PORT) || 4002;
 export const historyLimit = 500;
 export const tickIntervalMs = 1000;
+export const wsPath = "/ws";
+export const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:3110";
 
 export const tickers: MarketTicker[] = ["AAPL", "TSLA", "BTC-USD"];
 

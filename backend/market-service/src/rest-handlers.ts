@@ -41,6 +41,11 @@ function handleNotFound(res: HttpResponse): void {
 export function routeHttpRequest(req: HttpRequest, res: HttpResponse): void {
   const requestUrl = getRequestUrl(req);
 
+  if (req.method === "OPTIONS") {
+    sendJson(res, 204, {});
+    return;
+  }
+
   if (req.method === "GET" && requestUrl.pathname === "/") {
     handleRoot(req, res);
     return;

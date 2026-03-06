@@ -18,3 +18,13 @@ type PriceHistoryResponse = {
   ticker: MarketTicker;
   prices: PricePoint[];
 };
+
+type WsEnvelope<TType extends string, TPayload> = {
+  type: TType;
+  payload: TPayload;
+};
+
+type WsSubscriptionMessage = {
+  action: "subscribe" | "unsubscribe";
+  tickers: MarketTicker[];
+};

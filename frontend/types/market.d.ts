@@ -1,11 +1,21 @@
-type MarketInstrument = {
-  symbol: string;
-  name: string;
+type MarketTicker = "AAPL" | "TSLA" | "BTC-USD" | (string & {});
+
+type MarketPricePoint = {
+  ticker: MarketTicker;
   price: number;
-  currency: string;
+  timestamp: string;
 };
 
-type MarketSnapshot = {
-  updatedAt: string;
-  instruments: MarketInstrument[];
+type MarketTickersResponse = {
+  tickers: MarketTicker[];
+};
+
+type MarketHistoryResponse = {
+  ticker: MarketTicker;
+  prices: MarketPricePoint[];
+};
+
+type MarketWsMessage = {
+  type: string;
+  payload: unknown;
 };
