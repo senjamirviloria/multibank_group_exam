@@ -1,21 +1,12 @@
 import http from "http";
+import { port } from "./config";
+import { startMarketFeed } from "./market-feed";
+import { routeHttpRequest } from "./rest-handlers";
 
-const port = Number(process.env.PORT) || 4002;
+// Keep entrypoint minimal: wire HTTP, start feed, then listen.
+const server = http.createServer(routeHttpRequest);
 
-function sendJson(res: HttpResponse, statusCode: number, payload: unknown): void {
-  res.writeHead(statusCode, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(payload));
-}
-
-const server = http.createServer((req: HttpRequest, res: HttpResponse) => {
-  if (req.method === "GET" && req.url === "/") {
-    const response: MarketHealthResponse = { service: "market-service", status: "ok" };
-    sendJson(res, 200, response);
-    return;
-  }
-
-  sendJson(res, 404, { error: "Not found" });
-});
+startMarketFeed();
 
 server.listen(port, () => {
   console.log(`market-service running on port ${port}`);
