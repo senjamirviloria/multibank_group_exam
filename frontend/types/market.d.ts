@@ -6,6 +6,15 @@ type MarketPricePoint = {
   timestamp: string;
 };
 
+type MarketLiveTicker = {
+  symbol: MarketTicker;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  lastUpdated: string;
+};
+
 type MarketTickersResponse = {
   tickers: MarketTicker[];
 };

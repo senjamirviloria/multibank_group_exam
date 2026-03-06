@@ -4,6 +4,6 @@ type DashboardViewState = {
 };
 
 type DashboardPricePoint = {
-  time: string;
+  timestamp: string;
   price: number;
 };
