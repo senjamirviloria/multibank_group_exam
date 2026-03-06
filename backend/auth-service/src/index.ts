@@ -1,17 +1,34 @@
-const http = require("http");
-const jwt = require("jsonwebtoken");
+import http, { IncomingMessage, ServerResponse } from "http";
+import jwt, { JwtPayload } from "jsonwebtoken";
 
 const port = Number(process.env.PORT) || 4001;
 const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
 const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:3110";
 
-const mockUser = {
+type MockUser = {
+  id: string;
+  email: string;
+  name: string;
+};
+
+type LoginRequestBody = {
+  email?: string;
+  password?: string;
+};
+
+type AuthTokenPayload = JwtPayload & {
+  sub: string;
+  email: string;
+  name: string;
+};
+
+const mockUser: MockUser = {
   id: "user-1",
   email: "demo@multibank.local",
   name: "Demo User",
 };
 
-function sendJson(res, statusCode, payload) {
+function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowedOrigin,
@@ -21,12 +38,12 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function parseJsonBody(req) {
+function parseJsonBody(req: IncomingMessage): Promise<LoginRequestBody> {
   return new Promise((resolve, reject) => {
     let body = "";
 
-    req.on("data", (chunk) => {
-      body += chunk;
+    req.on("data", (chunk: Buffer) => {
+      body += chunk.toString();
       if (body.length > 1e6) {
         req.socket.destroy();
         reject(new Error("Request body too large"));
@@ -40,7 +57,7 @@ function parseJsonBody(req) {
       }
 
       try {
-        resolve(JSON.parse(body));
+        resolve(JSON.parse(body) as LoginRequestBody);
       } catch {
         reject(new Error("Invalid JSON body"));
       }
@@ -50,7 +67,7 @@ function parseJsonBody(req) {
   });
 }
 
-function getBearerToken(req) {
+function getBearerToken(req: IncomingMessage): string | null {
   const authHeader = req.headers.authorization || "";
   const [scheme, token] = authHeader.split(" ");
   if (scheme !== "Bearer" || !token) {
@@ -59,7 +76,7 @@ function getBearerToken(req) {
   return token;
 }
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
   if (!req.url) {
     sendJson(res, 400, { error: "Bad request" });
     return;
@@ -91,7 +108,7 @@ const server = http.createServer(async (req, res) => {
           name: mockUser.name,
         },
         jwtSecret,
-        { expiresIn: "1h" },
+        { expiresIn: "1h" }
       );
 
       sendJson(res, 200, {
@@ -104,7 +121,8 @@ const server = http.createServer(async (req, res) => {
         },
       });
     } catch (error) {
-      sendJson(res, 400, { error: error.message });
+      const message = error instanceof Error ? error.message : "Invalid request";
+      sendJson(res, 400, { error: message });
     }
     return;
   }
@@ -118,7 +136,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
-      const payload = jwt.verify(token, jwtSecret);
+      const payload = jwt.verify(token, jwtSecret) as AuthTokenPayload;
       sendJson(res, 200, {
         user: {
           id: payload.sub,
