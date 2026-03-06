@@ -6,18 +6,6 @@ import { authHttp } from "../lib/http/http";
 
 const ACCESS_TOKEN_COOKIE = "access_token";
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  name: string;
-};
-
-export type LoginActionState = {
-  success: boolean;
-  error: string;
-  user: AuthUser | null;
-};
-
 function getAxiosErrorMessage(error: unknown, fallback: string) {
   // I normalize API errors here so UI messages stay consistent.
   if (error instanceof AxiosError) {
@@ -70,7 +58,7 @@ export async function loginAction(
   }
 }
 
-export async function fetchCurrentUserAction(): Promise<{ user: AuthUser | null; error: string }> {
+export async function fetchCurrentUserAction(): Promise<CurrentUserActionResult> {
   const cookieStore = await cookies();
   const token = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
 

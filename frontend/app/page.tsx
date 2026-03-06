@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { loginAction, type LoginActionState } from "../actions/auth-actions";
+import { loginAction } from "../actions/auth-actions";
 import { useAuthStore } from "../store/auth-store";
 
 const initialState: LoginActionState = {
