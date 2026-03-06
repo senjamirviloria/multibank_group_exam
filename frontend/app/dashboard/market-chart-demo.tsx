@@ -23,7 +23,7 @@ const chartData: DashboardPricePoint[] = [
 
 export function MarketChartDemo() {
   return (
-    <section className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
+    <section className="mt-8 rounded-lg border border-slate-300 bg-slate-200 p-4">
       <h2 className="text-lg font-semibold text-slate-900">Recharts Demo</h2>
       <p className="mt-1 text-sm text-slate-600">Sample intraday price chart for AAPL.</p>
 

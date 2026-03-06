@@ -41,7 +41,7 @@ export default function LoginPage() {
               name="email"
               type="email"
               defaultValue="demo@multibank.local"
-              className="w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              className="w-full rounded border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-500"
               required
             />
           </div>
@@ -55,7 +55,7 @@ export default function LoginPage() {
               name="password"
               type="password"
               defaultValue="password123"
-              className="w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              className="w-full rounded border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-slate-500"
               required
             />
           </div>
