@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchCurrentUserAction, logoutAction } from "../../actions/auth-actions";
 import { useAuthStore } from "../../store/auth-store";
+import { MarketChartDemo } from "./market-chart-demo";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -69,9 +70,7 @@ export default function DashboardPage() {
           Authenticated as {user?.name} ({user?.email})
         </p>
 
-        <div className="mt-8 rounded border border-dashed border-slate-300 bg-slate-50 p-8 text-slate-600">
-          Dashboard here...
-        </div>
+        <MarketChartDemo />
       </div>
     </main>
   );
