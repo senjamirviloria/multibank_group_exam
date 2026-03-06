@@ -1,26 +1,9 @@
-import http, { IncomingMessage, ServerResponse } from "http";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import http from "http";
+import jwt from "jsonwebtoken";
 
 const port = Number(process.env.PORT) || 4001;
 const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
 const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:3110";
-
-type MockUser = {
-  id: string;
-  email: string;
-  name: string;
-};
-
-type LoginRequestBody = {
-  email?: string;
-  password?: string;
-};
-
-type AuthTokenPayload = JwtPayload & {
-  sub: string;
-  email: string;
-  name: string;
-};
 
 const mockUser: MockUser = {
   id: "user-1",
@@ -28,7 +11,7 @@ const mockUser: MockUser = {
   name: "Demo User",
 };
 
-function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
+function sendJson(res: HttpResponse, statusCode: number, payload: unknown): void {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowedOrigin,
@@ -38,7 +21,7 @@ function sendJson(res: ServerResponse, statusCode: number, payload: unknown): vo
   res.end(JSON.stringify(payload));
 }
 
-function parseJsonBody(req: IncomingMessage): Promise<LoginRequestBody> {
+function parseJsonBody<T extends Record<string, unknown>>(req: HttpRequest): Promise<T> {
   return new Promise((resolve, reject) => {
     let body = "";
 
@@ -52,12 +35,12 @@ function parseJsonBody(req: IncomingMessage): Promise<LoginRequestBody> {
 
     req.on("end", () => {
       if (!body) {
-        resolve({});
+        resolve({} as T);
         return;
       }
 
       try {
-        resolve(JSON.parse(body) as LoginRequestBody);
+        resolve(JSON.parse(body) as T);
       } catch {
         reject(new Error("Invalid JSON body"));
       }
@@ -67,7 +50,7 @@ function parseJsonBody(req: IncomingMessage): Promise<LoginRequestBody> {
   });
 }
 
-function getBearerToken(req: IncomingMessage): string | null {
+function getBearerToken(req: HttpRequest): string | null {
   const authHeader = req.headers.authorization || "";
   const [scheme, token] = authHeader.split(" ");
   if (scheme !== "Bearer" || !token) {
@@ -76,7 +59,7 @@ function getBearerToken(req: IncomingMessage): string | null {
   return token;
 }
 
-const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
+const server = http.createServer(async (req: HttpRequest, res: HttpResponse) => {
   if (!req.url) {
     sendJson(res, 400, { error: "Bad request" });
     return;
@@ -94,7 +77,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
 
   if (req.method === "POST" && req.url === "/auth/login") {
     try {
-      const { email, password } = await parseJsonBody(req);
+      const { email, password } = await parseJsonBody<LoginRequestBody>(req);
 
       if (!email || !password) {
         sendJson(res, 400, { error: "Email and password are required" });
