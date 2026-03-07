@@ -31,6 +31,22 @@ const HISTORY_CACHE_TTL_MS = (() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 })();
 const MARKET_ACCESS_TOKEN_COOKIE = "market_access_token";
+const ALERT_COOLDOWN_MS = 15_000;
+
+type PriceAlertRule = {
+  direction: "above" | "below";
+  price: number;
+  enabled: boolean;
+};
+
+type PriceAlertEvent = {
+  id: string;
+  ticker: MarketTicker;
+  direction: "above" | "below";
+  threshold: number;
+  price: number;
+  timestamp: string;
+};
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") {
@@ -92,7 +108,14 @@ export function MarketChartDemo() {
   const [history, setHistory] = useState<DashboardPricePoint[]>([]);
   const [error, setError] = useState("");
   const [marketToken, setMarketToken] = useState<string | null>(null);
+  const [alertRules, setAlertRules] = useState<Record<string, PriceAlertRule>>({});
+  const [thresholdInput, setThresholdInput] = useState("");
+  const [thresholdDirection, setThresholdDirection] = useState<"above" | "below">("above");
+  const [alerts, setAlerts] = useState<PriceAlertEvent[]>([]);
   const selectedTickerRef = useRef<MarketTicker>(selectedTicker);
+  const alertRulesRef = useRef<Record<string, PriceAlertRule>>({});
+  const lastAlertAtRef = useRef<Record<string, number>>({});
+  const lastConditionMetRef = useRef<Record<string, boolean>>({});
   const hydrateCache = useMarketHistoryCacheStore((state) => state.hydrateCache);
   const getTickerHistory = useMarketHistoryCacheStore((state) => state.getTickerHistory);
   const setTickerHistory = useMarketHistoryCacheStore((state) => state.setTickerHistory);
@@ -106,6 +129,22 @@ export function MarketChartDemo() {
   useEffect(() => {
     selectedTickerRef.current = selectedTicker;
   }, [selectedTicker]);
+
+  useEffect(() => {
+    alertRulesRef.current = alertRules;
+  }, [alertRules]);
+
+  useEffect(() => {
+    const rule = alertRules[selectedTicker];
+    if (!rule) {
+      setThresholdInput("");
+      setThresholdDirection("above");
+      return;
+    }
+
+    setThresholdInput(String(rule.price));
+    setThresholdDirection(rule.direction);
+  }, [alertRules, selectedTicker]);
 
   useEffect(() => {
     hydrateCache();
@@ -269,6 +308,37 @@ export function MarketChartDemo() {
 
         setTickers((previous) => {
           const index = previous.findIndex((ticker) => ticker.symbol === incoming.ticker);
+          const activeRule = alertRulesRef.current[incoming.ticker];
+          const conditionMet =
+            Boolean(activeRule?.enabled) &&
+            ((activeRule.direction === "above" && incoming.price >= activeRule.price) ||
+              (activeRule.direction === "below" && incoming.price <= activeRule.price));
+
+          if (conditionMet && activeRule) {
+            const alertKey = `${incoming.ticker}:${activeRule.direction}:${activeRule.price}`;
+            const wasMet = lastConditionMetRef.current[alertKey] || false;
+            const now = Date.now();
+            const lastAlertAt = lastAlertAtRef.current[alertKey] || 0;
+
+            if (!wasMet && now - lastAlertAt >= ALERT_COOLDOWN_MS) {
+              lastAlertAtRef.current[alertKey] = now;
+              const nextAlert: PriceAlertEvent = {
+                id: `${alertKey}:${now}`,
+                ticker: incoming.ticker,
+                direction: activeRule.direction,
+                threshold: activeRule.price,
+                price: incoming.price,
+                timestamp: incoming.timestamp,
+              };
+              setAlerts((previousAlerts) => [nextAlert, ...previousAlerts].slice(0, 20));
+            }
+
+            lastConditionMetRef.current[alertKey] = true;
+          } else if (activeRule) {
+            const alertKey = `${incoming.ticker}:${activeRule.direction}:${activeRule.price}`;
+            lastConditionMetRef.current[alertKey] = false;
+          }
+
           if (index < 0) {
             return [toLiveTicker(incoming), ...previous];
           }
@@ -310,6 +380,62 @@ export function MarketChartDemo() {
       ws?.close();
     };
   }, [appendTickerPoint, marketToken]);
+
+  const setThresholdAlert = () => {
+    const parsed = Number(thresholdInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setError("Threshold must be a positive number");
+      return;
+    }
+
+    setError("");
+    setAlertRules((previous) => ({
+      ...previous,
+      [selectedTicker]: {
+        enabled: true,
+        direction: thresholdDirection,
+        price: parsed,
+      },
+    }));
+
+    const livePrice = selectedData?.price;
+    if (typeof livePrice === "number") {
+      const conditionMet =
+        thresholdDirection === "above" ? livePrice >= parsed : livePrice <= parsed;
+      const alertKey = `${selectedTicker}:${thresholdDirection}:${parsed}`;
+      lastConditionMetRef.current[alertKey] = conditionMet;
+
+      if (conditionMet) {
+        const now = Date.now();
+        lastAlertAtRef.current[alertKey] = now;
+        const nextAlert: PriceAlertEvent = {
+          id: `${alertKey}:${now}`,
+          ticker: selectedTicker,
+          direction: thresholdDirection,
+          threshold: parsed,
+          price: livePrice,
+          timestamp: new Date(now).toISOString(),
+        };
+        setAlerts((previousAlerts) => [nextAlert, ...previousAlerts].slice(0, 20));
+      }
+    }
+  };
+
+  const clearThresholdAlert = () => {
+    setAlertRules((previous) => {
+      const next = { ...previous };
+      delete next[selectedTicker];
+      return next;
+    });
+    setThresholdInput("");
+    Object.keys(lastConditionMetRef.current).forEach((key) => {
+      if (key.startsWith(`${selectedTicker}:`)) {
+        delete lastConditionMetRef.current[key];
+      }
+    });
+  };
+
+  const selectedRule = alertRules[selectedTicker];
 
   return (
     <section className="mt-8">
@@ -373,6 +499,51 @@ export function MarketChartDemo() {
 
           {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="mb-2 text-sm font-semibold text-slate-900">Price Threshold Alert</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-sm text-slate-700">
+                Direction
+                <select
+                  value={thresholdDirection}
+                  onChange={(event) => setThresholdDirection(event.target.value as "above" | "below")}
+                  className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-slate-900"
+                >
+                  <option value="above">Above</option>
+                  <option value="below">Below</option>
+                </select>
+              </label>
+              <label className="text-sm text-slate-700">
+                Price
+                <input
+                  value={thresholdInput}
+                  onChange={(event) => setThresholdInput(event.target.value)}
+                  placeholder="e.g. 200"
+                  className="ml-2 w-36 rounded border border-slate-300 bg-white px-2 py-1 text-slate-900"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={setThresholdAlert}
+                className="rounded bg-slate-900 px-3 py-1 text-sm text-white hover:bg-slate-700"
+              >
+                Set Alert
+              </button>
+              <button
+                type="button"
+                onClick={clearThresholdAlert}
+                className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+              >
+                Clear
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-slate-600">
+              {selectedRule
+                ? `Active for ${selectedTicker}: ${selectedRule.direction} ${formatMoney(selectedRule.price)}`
+                : `No active threshold alert for ${selectedTicker}`}
+            </p>
+          </div>
+
           <div className="h-80 w-full md:h-105">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={history}>
@@ -410,7 +581,7 @@ export function MarketChartDemo() {
               </h3>
             </div>
 
-            <div className="max-h-100 overflow-y-auto">
+            <div className="max-h-75 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-slate-100 text-slate-700">
                   <tr>
@@ -429,6 +600,49 @@ export function MarketChartDemo() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-slate-200">
+            <div className="border-b border-slate-200 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-900">Alert Events</h3>
+            </div>
+
+            <div className="max-h-60 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-slate-100 text-slate-700">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Timestamp</th>
+                    <th className="px-4 py-2 text-left font-medium">Ticker</th>
+                    <th className="px-4 py-2 text-left font-medium">Rule</th>
+                    <th className="px-4 py-2 text-right font-medium">Triggered Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alerts.length ? (
+                    alerts.map((alert) => (
+                      <tr key={alert.id} className="border-t border-slate-100">
+                        <td className="px-4 py-2 text-slate-700">
+                          {new Date(alert.timestamp).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2 font-medium text-slate-900">{alert.ticker}</td>
+                        <td className="px-4 py-2 text-slate-700">
+                          {alert.direction} {formatMoney(alert.threshold)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-medium text-slate-900">
+                          {formatMoney(alert.price)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-slate-500">
+                        No alerts triggered yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
