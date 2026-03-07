@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useMarketHistoryCacheStore } from "@/store/market-history-cache-store";
 
 const MARKET_API_URL = process.env.NEXT_PUBLIC_MARKET_API_URL || "http://localhost:4002";
 const MARKET_WS_URL = (() => {
@@ -29,7 +30,6 @@ const HISTORY_CACHE_TTL_MS = (() => {
   const parsed = Number(process.env.NEXT_PUBLIC_HISTORY_CACHE_TTL_MS || "30000");
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 })();
-const HISTORY_CACHE_STORAGE_KEY = "market_history_cache_v1";
 
 function formatMoney(price: number) {
   return `$${price.toLocaleString(undefined, {
@@ -75,17 +75,10 @@ export function MarketChartDemo() {
   const [history, setHistory] = useState<DashboardPricePoint[]>([]);
   const [error, setError] = useState("");
   const selectedTickerRef = useRef<MarketTicker>(selectedTicker);
-  const historyCacheRef = useRef<
-    Record<string, { points: DashboardPricePoint[]; cachedAt: number }>
-  >({});
-
-  const persistHistoryCache = () => {
-    try {
-      localStorage.setItem(HISTORY_CACHE_STORAGE_KEY, JSON.stringify(historyCacheRef.current));
-    } catch {
-      // Ignore storage failures; in-memory cache still works.
-    }
-  };
+  const hydrateCache = useMarketHistoryCacheStore((state) => state.hydrateCache);
+  const getTickerHistory = useMarketHistoryCacheStore((state) => state.getTickerHistory);
+  const setTickerHistory = useMarketHistoryCacheStore((state) => state.setTickerHistory);
+  const appendTickerPoint = useMarketHistoryCacheStore((state) => state.appendTickerPoint);
 
   const selectedData = useMemo(
     () => tickers.find((ticker) => ticker.symbol === selectedTicker),
@@ -97,20 +90,8 @@ export function MarketChartDemo() {
   }, [selectedTicker]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HISTORY_CACHE_STORAGE_KEY);
-      if (!raw) {
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as Record<string, { points: DashboardPricePoint[]; cachedAt: number }>;
-      if (parsed && typeof parsed === "object") {
-        historyCacheRef.current = parsed;
-      }
-    } catch {
-      // Ignore malformed cached values.
-    }
-  }, []);
+    hydrateCache();
+  }, [hydrateCache]);
 
   useEffect(() => {
     const loadTickers = async () => {
@@ -148,9 +129,9 @@ export function MarketChartDemo() {
         return;
       }
 
-      const cached = historyCacheRef.current[selectedTicker];
-      if (cached && Date.now() - cached.cachedAt < HISTORY_CACHE_TTL_MS) {
-        setHistory(cached.points);
+      const cached = getTickerHistory(selectedTicker, HISTORY_CACHE_TTL_MS);
+      if (cached) {
+        setHistory(cached);
         return;
       }
 
@@ -165,11 +146,7 @@ export function MarketChartDemo() {
 
         const payload = (await response.json()) as MarketHistoryResponse;
         const mapped = payload.prices.map((point) => ({ timestamp: point.timestamp, price: point.price }));
-        historyCacheRef.current[selectedTicker] = {
-          points: mapped,
-          cachedAt: Date.now(),
-        };
-        persistHistoryCache();
+        setTickerHistory(selectedTicker, mapped);
         setHistory(mapped);
       } catch {
         setError("Failed to load history");
@@ -177,7 +154,7 @@ export function MarketChartDemo() {
     };
 
     void loadHistory();
-  }, [selectedTicker]);
+  }, [getTickerHistory, selectedTicker, setTickerHistory]);
 
   useEffect(() => {
     let active = true;
@@ -235,19 +212,12 @@ export function MarketChartDemo() {
           return next;
         });
 
-      if (incoming.ticker === selectedTickerRef.current) {
-        setHistory((previous) => {
-          const next = [...previous, { timestamp: incoming.timestamp, price: incoming.price }];
-          const trimmed = next.slice(-120);
-          historyCacheRef.current[incoming.ticker] = {
-            points: trimmed,
-            cachedAt: Date.now(),
-          };
-          persistHistoryCache();
-          return trimmed;
-        });
-      }
-    };
+        if (incoming.ticker === selectedTickerRef.current) {
+          const nextPoint = { timestamp: incoming.timestamp, price: incoming.price };
+          setHistory((previous) => [...previous, nextPoint].slice(-120));
+          appendTickerPoint(incoming.ticker, nextPoint, 120);
+        }
+      };
 
       ws.onerror = () => {
         setError(`WebSocket connection error (${MARKET_WS_URL})`);
@@ -273,7 +243,7 @@ export function MarketChartDemo() {
       }
       ws?.close();
     };
-  }, []);
+  }, [appendTickerPoint]);
 
   return (
     <section className="mt-8">
