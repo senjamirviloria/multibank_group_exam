@@ -28,6 +28,8 @@ services:
         target: PORT
       - source: CORS_ORIGIN_MARKET
         target: CORS_ORIGIN
+      - source: JWT_SECRET
+        target: JWT_SECRET
     ports:
       - "4002:4002"
 

@@ -5,6 +5,7 @@ import { AxiosError } from "axios";
 import { authHttp } from "../lib/http/http";
 
 const ACCESS_TOKEN_COOKIE = "access_token";
+const MARKET_ACCESS_TOKEN_COOKIE = "market_access_token";
 
 function getAxiosErrorMessage(error: unknown, fallback: string) {
   // I normalize API errors here so UI messages stay consistent.
@@ -38,6 +39,15 @@ export async function loginAction(
     // Store JWT in httpOnly cookie so client code never touches raw token.
     cookieStore.set(ACCESS_TOKEN_COOKIE, response.data.accessToken, {
       httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      path: "/",
+      maxAge: 60 * 60,
+    });
+
+    // Expose a non-httpOnly token copy for browser-side market REST/WS calls.
+    cookieStore.set(MARKET_ACCESS_TOKEN_COOKIE, response.data.accessToken, {
+      httpOnly: false,
       sameSite: "lax",
       secure: false,
       path: "/",
@@ -79,6 +89,7 @@ export async function fetchCurrentUserAction(): Promise<CurrentUserActionResult>
     if (error instanceof AxiosError && error.response?.status === 401) {
       // If token is stale/invalid, clear it immediately to avoid loops.
       cookieStore.delete(ACCESS_TOKEN_COOKIE);
+      cookieStore.delete(MARKET_ACCESS_TOKEN_COOKIE);
       return { user: null, error: "Unauthorized" };
     }
 
@@ -89,4 +100,5 @@ export async function fetchCurrentUserAction(): Promise<CurrentUserActionResult>
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(ACCESS_TOKEN_COOKIE);
+  cookieStore.delete(MARKET_ACCESS_TOKEN_COOKIE);
 }

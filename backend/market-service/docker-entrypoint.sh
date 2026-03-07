@@ -12,5 +12,6 @@ read_secret() {
 
 read_secret PORT
 read_secret CORS_ORIGIN
+read_secret JWT_SECRET
 
 exec node dist/index.js

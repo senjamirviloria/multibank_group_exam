@@ -1,3 +1,4 @@
+import { getBearerToken, verifyAccessToken } from "./auth";
 import { historyLimit, tickers } from "./config";
 import { getHistory, getRequestUrl, isTicker, sendJson } from "./helpers";
 
@@ -38,6 +39,22 @@ function handleNotFound(res: HttpResponse): void {
   sendJson(res, 404, { error: "Not found" });
 }
 
+function requireAuth(req: HttpRequest, res: HttpResponse): boolean {
+  const token = getBearerToken(req);
+  if (!token) {
+    sendJson(res, 401, { error: "Missing Bearer token" });
+    return false;
+  }
+
+  const payload = verifyAccessToken(token);
+  if (!payload) {
+    sendJson(res, 401, { error: "Invalid or expired token" });
+    return false;
+  }
+
+  return true;
+}
+
 export function routeHttpRequest(req: HttpRequest, res: HttpResponse): void {
   const requestUrl = getRequestUrl(req);
 
@@ -52,11 +69,17 @@ export function routeHttpRequest(req: HttpRequest, res: HttpResponse): void {
   }
 
   if (req.method === "GET" && requestUrl.pathname === "/tickers") {
+    if (!requireAuth(req, res)) {
+      return;
+    }
     handleTickers(req, res);
     return;
   }
 
   if (req.method === "GET" && requestUrl.pathname === "/prices/history") {
+    if (!requireAuth(req, res)) {
+      return;
+    }
     handlePriceHistory(req, res);
     return;
   }

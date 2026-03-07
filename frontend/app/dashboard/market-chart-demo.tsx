@@ -30,6 +30,23 @@ const HISTORY_CACHE_TTL_MS = (() => {
   const parsed = Number(process.env.NEXT_PUBLIC_HISTORY_CACHE_TTL_MS || "30000");
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 })();
+const MARKET_ACCESS_TOKEN_COOKIE = "market_access_token";
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const pair = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${name}=`));
+
+  if (!pair) {
+    return null;
+  }
+
+  return decodeURIComponent(pair.split("=").slice(1).join("="));
+}
 
 function formatMoney(price: number) {
   return `$${price.toLocaleString(undefined, {
@@ -74,6 +91,7 @@ export function MarketChartDemo() {
   const [selectedTicker, setSelectedTicker] = useState<MarketTicker>("AAPL");
   const [history, setHistory] = useState<DashboardPricePoint[]>([]);
   const [error, setError] = useState("");
+  const [marketToken, setMarketToken] = useState<string | null>(null);
   const selectedTickerRef = useRef<MarketTicker>(selectedTicker);
   const hydrateCache = useMarketHistoryCacheStore((state) => state.hydrateCache);
   const getTickerHistory = useMarketHistoryCacheStore((state) => state.getTickerHistory);
@@ -94,10 +112,28 @@ export function MarketChartDemo() {
   }, [hydrateCache]);
 
   useEffect(() => {
+    setMarketToken(readCookie(MARKET_ACCESS_TOKEN_COOKIE));
+  }, []);
+
+  useEffect(() => {
     const loadTickers = async () => {
+      if (!marketToken) {
+        setError("Unauthorized market session");
+        return;
+      }
+
       try {
-        const response = await fetch(`${MARKET_API_URL}/tickers`, { cache: "no-store" });
+        const response = await fetch(`${MARKET_API_URL}/tickers`, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${marketToken}`,
+          },
+        });
         if (!response.ok) {
+          if (response.status === 401) {
+            setError("Unauthorized market session");
+            return;
+          }
           throw new Error("Failed to load tickers");
         }
 
@@ -121,11 +157,16 @@ export function MarketChartDemo() {
     };
 
     void loadTickers();
-  }, []);
+  }, [marketToken]);
 
   useEffect(() => {
     const loadHistory = async () => {
       if (!selectedTicker) {
+        return;
+      }
+
+      if (!marketToken) {
+        setError("Unauthorized market session");
         return;
       }
 
@@ -136,11 +177,21 @@ export function MarketChartDemo() {
       }
 
       try {
-        const response = await fetch(`${MARKET_API_URL}/prices/history?ticker=${selectedTicker}&limit=80`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `${MARKET_API_URL}/prices/history?ticker=${selectedTicker}&limit=80`,
+          {
+            cache: "no-store",
+            headers: {
+              Authorization: `Bearer ${marketToken}`,
+            },
+          }
+        );
 
         if (!response.ok) {
+          if (response.status === 401) {
+            setError("Unauthorized market session");
+            return;
+          }
           throw new Error("Failed to load history");
         }
 
@@ -154,7 +205,7 @@ export function MarketChartDemo() {
     };
 
     void loadHistory();
-  }, [getTickerHistory, selectedTicker, setTickerHistory]);
+  }, [getTickerHistory, marketToken, selectedTicker, setTickerHistory]);
 
   useEffect(() => {
     let active = true;
@@ -162,7 +213,22 @@ export function MarketChartDemo() {
     let ws: WebSocket | null = null;
 
     const connect = () => {
-      ws = new WebSocket(MARKET_WS_URL);
+      if (!marketToken) {
+        setError("Unauthorized market session");
+        return;
+      }
+
+      let socketUrl = MARKET_WS_URL;
+      try {
+        const wsUrl = new URL(MARKET_WS_URL);
+        wsUrl.searchParams.set("token", marketToken);
+        socketUrl = wsUrl.toString();
+      } catch {
+        setError(`Invalid WebSocket URL (${MARKET_WS_URL})`);
+        return;
+      }
+
+      ws = new WebSocket(socketUrl);
 
       ws.onopen = () => {
         setError("");
@@ -243,7 +309,7 @@ export function MarketChartDemo() {
       }
       ws?.close();
     };
-  }, [appendTickerPoint]);
+  }, [appendTickerPoint, marketToken]);
 
   return (
     <section className="mt-8">

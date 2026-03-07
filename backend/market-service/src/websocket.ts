@@ -1,6 +1,7 @@
 import type { Server } from "http";
 import type { Socket } from "net";
 import { WebSocketServer } from "ws";
+import { getUpgradeToken, verifyAccessToken } from "./auth";
 import { wsPath } from "./config";
 import {
   getLatestPoints,
@@ -35,6 +36,13 @@ export function wireWebSocketServer(server: Server): void {
     const requestUrl = getRequestUrl(req);
 
     if (requestUrl.pathname !== wsPath) {
+      socket.destroy();
+      return;
+    }
+
+    const token = getUpgradeToken(req);
+    if (!token || !verifyAccessToken(token)) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return;
     }

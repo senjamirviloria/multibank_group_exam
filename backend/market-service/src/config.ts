@@ -4,6 +4,7 @@ export const historyLimit = 500;
 export const tickIntervalMs = 1000;
 export const wsPath = "/ws";
 export const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:3110";
+export const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
 
 export const tickers: MarketTicker[] = ["AAPL", "TSLA", "BTC-USD"];
 
