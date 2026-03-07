@@ -39,6 +39,10 @@ services:
     secrets:
       - source: AUTH_API_URL
         target: AUTH_API_URL
+      - source: PORT_FRONTEND
+        target: PORT
+      - source: HOSTNAME_FRONTEND
+        target: HOSTNAME
       - source: NEXT_PUBLIC_AUTH_API_URL
         target: NEXT_PUBLIC_AUTH_API_URL
       - source: NEXT_PUBLIC_MARKET_API_URL
@@ -76,5 +80,9 @@ secrets:
     file: ./secrets/MOCK_AUTH_PASSWORD
   PORT_MARKET:
     file: ./secrets/PORT_MARKET
+  PORT_FRONTEND:
+    file: ./secrets/PORT_FRONTEND
+  HOSTNAME_FRONTEND:
+    file: ./secrets/HOSTNAME_FRONTEND
   CORS_ORIGIN_MARKET:
     file: ./secrets/CORS_ORIGIN_MARKET

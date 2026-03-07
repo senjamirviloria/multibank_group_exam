@@ -11,6 +11,8 @@ read_secret() {
 }
 
 read_secret AUTH_API_URL
+read_secret PORT
+read_secret HOSTNAME
 read_secret NEXT_PUBLIC_AUTH_API_URL
 read_secret NEXT_PUBLIC_MARKET_API_URL
 read_secret NEXT_PUBLIC_MARKET_WS_URL
