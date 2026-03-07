@@ -29,6 +29,7 @@ const HISTORY_CACHE_TTL_MS = (() => {
   const parsed = Number(process.env.NEXT_PUBLIC_HISTORY_CACHE_TTL_MS || "30000");
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 })();
+const HISTORY_CACHE_STORAGE_KEY = "market_history_cache_v1";
 
 function formatMoney(price: number) {
   return `$${price.toLocaleString(undefined, {
@@ -78,6 +79,14 @@ export function MarketChartDemo() {
     Record<string, { points: DashboardPricePoint[]; cachedAt: number }>
   >({});
 
+  const persistHistoryCache = () => {
+    try {
+      localStorage.setItem(HISTORY_CACHE_STORAGE_KEY, JSON.stringify(historyCacheRef.current));
+    } catch {
+      // Ignore storage failures; in-memory cache still works.
+    }
+  };
+
   const selectedData = useMemo(
     () => tickers.find((ticker) => ticker.symbol === selectedTicker),
     [selectedTicker, tickers]
@@ -86,6 +95,22 @@ export function MarketChartDemo() {
   useEffect(() => {
     selectedTickerRef.current = selectedTicker;
   }, [selectedTicker]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_CACHE_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as Record<string, { points: DashboardPricePoint[]; cachedAt: number }>;
+      if (parsed && typeof parsed === "object") {
+        historyCacheRef.current = parsed;
+      }
+    } catch {
+      // Ignore malformed cached values.
+    }
+  }, []);
 
   useEffect(() => {
     const loadTickers = async () => {
@@ -144,6 +169,7 @@ export function MarketChartDemo() {
           points: mapped,
           cachedAt: Date.now(),
         };
+        persistHistoryCache();
         setHistory(mapped);
       } catch {
         setError("Failed to load history");
@@ -217,6 +243,7 @@ export function MarketChartDemo() {
             points: trimmed,
             cachedAt: Date.now(),
           };
+          persistHistoryCache();
           return trimmed;
         });
       }
