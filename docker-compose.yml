@@ -36,6 +36,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: mb-frontend
+    environment:
+      PORT: "3110"
+      HOSTNAME: "0.0.0.0"
     secrets:
       - source: AUTH_API_URL
         target: AUTH_API_URL
