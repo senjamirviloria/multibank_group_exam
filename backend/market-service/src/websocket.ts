@@ -34,7 +34,7 @@ export function wireWebSocketServer(server: Server): void {
   server.on("upgrade", (req, socket: Socket, head) => {
     const requestUrl = getRequestUrl(req);
 
-    if (requestUrl.pathname !== wsPath) {
+    if (!(requestUrl.pathname === wsPath || requestUrl.pathname === `${wsPath}/`)) {
       socket.destroy();
       return;
     }
