@@ -25,6 +25,7 @@ const MARKET_WS_URL = (() => {
     return "ws://localhost:4002/ws";
   }
 })();
+const HISTORY_CACHE_TTL_MS = 30_000;
 
 function formatMoney(price: number) {
   return `$${price.toLocaleString(undefined, {
@@ -70,6 +71,9 @@ export function MarketChartDemo() {
   const [history, setHistory] = useState<DashboardPricePoint[]>([]);
   const [error, setError] = useState("");
   const selectedTickerRef = useRef<MarketTicker>(selectedTicker);
+  const historyCacheRef = useRef<
+    Record<string, { points: DashboardPricePoint[]; cachedAt: number }>
+  >({});
 
   const selectedData = useMemo(
     () => tickers.find((ticker) => ticker.symbol === selectedTicker),
@@ -116,6 +120,12 @@ export function MarketChartDemo() {
         return;
       }
 
+      const cached = historyCacheRef.current[selectedTicker];
+      if (cached && Date.now() - cached.cachedAt < HISTORY_CACHE_TTL_MS) {
+        setHistory(cached.points);
+        return;
+      }
+
       try {
         const response = await fetch(`${MARKET_API_URL}/prices/history?ticker=${selectedTicker}&limit=80`, {
           cache: "no-store",
@@ -126,7 +136,12 @@ export function MarketChartDemo() {
         }
 
         const payload = (await response.json()) as MarketHistoryResponse;
-        setHistory(payload.prices.map((point) => ({ timestamp: point.timestamp, price: point.price })));
+        const mapped = payload.prices.map((point) => ({ timestamp: point.timestamp, price: point.price }));
+        historyCacheRef.current[selectedTicker] = {
+          points: mapped,
+          cachedAt: Date.now(),
+        };
+        setHistory(mapped);
       } catch {
         setError("Failed to load history");
       }
@@ -191,13 +206,18 @@ export function MarketChartDemo() {
           return next;
         });
 
-        if (incoming.ticker === selectedTickerRef.current) {
-          setHistory((previous) => {
-            const next = [...previous, { timestamp: incoming.timestamp, price: incoming.price }];
-            return next.slice(-120);
-          });
-        }
-      };
+      if (incoming.ticker === selectedTickerRef.current) {
+        setHistory((previous) => {
+          const next = [...previous, { timestamp: incoming.timestamp, price: incoming.price }];
+          const trimmed = next.slice(-120);
+          historyCacheRef.current[incoming.ticker] = {
+            points: trimmed,
+            cachedAt: Date.now(),
+          };
+          return trimmed;
+        });
+      }
+    };
 
       ws.onerror = () => {
         setError(`WebSocket connection error (${MARKET_WS_URL})`);
