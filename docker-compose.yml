@@ -4,12 +4,17 @@ services:
       context: ./backend/auth-service
       dockerfile: Dockerfile
     container_name: mb-auth-service
-    environment:
-      PORT: 4001
-      CORS_ORIGIN: http://localhost:3110
-      JWT_SECRET: dev-secret-change-me
-      MOCK_AUTH_USERNAME: demo@multibank.local
-      MOCK_AUTH_PASSWORD: password123
+    secrets:
+      - source: PORT_AUTH
+        target: PORT
+      - source: CORS_ORIGIN_AUTH
+        target: CORS_ORIGIN
+      - source: JWT_SECRET
+        target: JWT_SECRET
+      - source: MOCK_AUTH_USERNAME
+        target: MOCK_AUTH_USERNAME
+      - source: MOCK_AUTH_PASSWORD
+        target: MOCK_AUTH_PASSWORD
     ports:
       - "4001:4001"
 
@@ -18,9 +23,11 @@ services:
       context: ./backend/market-service
       dockerfile: Dockerfile
     container_name: mb-market-service
-    environment:
-      PORT: 4002
-      CORS_ORIGIN: http://localhost:3110
+    secrets:
+      - source: PORT_MARKET
+        target: PORT
+      - source: CORS_ORIGIN_MARKET
+        target: CORS_ORIGIN
     ports:
       - "4002:4002"
 
@@ -29,14 +36,45 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: mb-frontend
-    environment:
-      AUTH_API_URL: http://auth-service:4001
-      NEXT_PUBLIC_AUTH_API_URL: http://localhost:4001
-      NEXT_PUBLIC_MARKET_API_URL: http://localhost:4002
-      NEXT_PUBLIC_MARKET_WS_URL: ws://localhost:4002/ws
-      NEXT_PUBLIC_HISTORY_CACHE_TTL_MS: 30000
+    secrets:
+      - source: AUTH_API_URL
+        target: AUTH_API_URL
+      - source: NEXT_PUBLIC_AUTH_API_URL
+        target: NEXT_PUBLIC_AUTH_API_URL
+      - source: NEXT_PUBLIC_MARKET_API_URL
+        target: NEXT_PUBLIC_MARKET_API_URL
+      - source: NEXT_PUBLIC_MARKET_WS_URL
+        target: NEXT_PUBLIC_MARKET_WS_URL
+      - source: NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
+        target: NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
     ports:
       - "3110:3110"
     depends_on:
       - auth-service
       - market-service
+
+secrets:
+  AUTH_API_URL:
+    file: ./secrets/AUTH_API_URL
+  NEXT_PUBLIC_AUTH_API_URL:
+    file: ./secrets/NEXT_PUBLIC_AUTH_API_URL
+  NEXT_PUBLIC_MARKET_API_URL:
+    file: ./secrets/NEXT_PUBLIC_MARKET_API_URL
+  NEXT_PUBLIC_MARKET_WS_URL:
+    file: ./secrets/NEXT_PUBLIC_MARKET_WS_URL
+  NEXT_PUBLIC_HISTORY_CACHE_TTL_MS:
+    file: ./secrets/NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
+  PORT_AUTH:
+    file: ./secrets/PORT_AUTH
+  CORS_ORIGIN_AUTH:
+    file: ./secrets/CORS_ORIGIN_AUTH
+  JWT_SECRET:
+    file: ./secrets/JWT_SECRET
+  MOCK_AUTH_USERNAME:
+    file: ./secrets/MOCK_AUTH_USERNAME
+  MOCK_AUTH_PASSWORD:
+    file: ./secrets/MOCK_AUTH_PASSWORD
+  PORT_MARKET:
+    file: ./secrets/PORT_MARKET
+  CORS_ORIGIN_MARKET:
+    file: ./secrets/CORS_ORIGIN_MARKET
