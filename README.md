@@ -21,6 +21,33 @@ Core capabilities:
 - Threshold-based price alerting in the dashboard
 - Docker and Kubernetes deployment support with helper scripts
 
+## Assumptions
+
+- This project is designed for local development and evaluation.
+- Authentication uses mocked credentials and JWT without a database.
+- Market data is simulated in-memory (mock feed), not from a live provider.
+- Historical prices are in-memory on backend and client-cached on frontend.
+- For local Kubernetes access, services are exposed through `kubectl port-forward`.
+- Default local ports are:
+  - Frontend: `3110`
+  - Auth service: `4001`
+  - Market service: `4002`
+
+## Tradeoffs
+
+- Mock authentication is fast to integrate, but does not represent production-grade identity/security flows.
+- In-memory market state is simple and low-latency, but data is lost on restart and not shared across replicas.
+- Frontend-side caching improves UX and reduces API calls, but cache consistency is eventually-updated.
+- WebSocket token access from browser code enables direct realtime subscriptions, but is less secure than fully server-side token handling.
+- Manual/port-forward local access keeps setup simple, but is not equivalent to ingress-based production networking.
+
+## Bonus Features
+
+- Add user authentication (mocked): Implemented
+- Implement caching for historical data: Implemented (Zustand-based frontend cache)
+- Add alerting for price thresholds: Implemented (dashboard threshold alerts)
+- Deploy using Kubernetes manifests: Implemented (`k8s/` manifests + helper scripts)
+
 ## Prerequisites
 
 - Node.js 20+
