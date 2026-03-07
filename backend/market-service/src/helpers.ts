@@ -1,12 +1,12 @@
 import { WebSocket } from "ws";
-import { allowedOrigin, basePriceByTicker, historyLimit, port, tickers } from "./config";
+import { basePriceByTicker, historyLimit, port, tickers } from "./config";
 import { currentPrice, history, subscriptions } from "./state";
 
 // Keep JSON response shape consistent across all handlers.
 export function sendJson(res: HttpResponse, statusCode: number, payload: unknown): void {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
   });
