@@ -5,6 +5,22 @@ Monorepo with:
 - `backend/auth-service` (Node.js/TypeScript on port `4001`)
 - `backend/market-service` (Node.js/TypeScript on port `4002`)
 
+## Project Overview
+
+This project is a simple microservice-based market dashboard.
+
+- `auth-service` provides mock login and JWT token issuance.
+- `market-service` provides market REST APIs and live WebSocket price updates.
+- `frontend` provides login, live ticker dashboard, chart visualization, and history table.
+
+Core capabilities:
+
+- JWT/Bearer authentication flow across services
+- Real-time ticker streaming (`AAPL`, `TSLA`, `BTC-USD`)
+- Historical price API with frontend caching via Zustand
+- Threshold-based price alerting in the dashboard
+- Docker and Kubernetes deployment support with helper scripts
+
 ## Prerequisites
 
 - Node.js 20+
@@ -105,6 +121,31 @@ docker compose ps
 docker compose logs -f frontend
 docker compose logs -f auth-service
 docker compose logs -f market-service
+```
+
+## Backend Tests
+
+If this is your first run, install dependencies first.  
+If you already ran `npm install` before, you can skip it.
+
+Run tests per backend service:
+
+```bash
+cd backend/auth-service
+npm install
+npm test
+```
+
+```bash
+cd backend/market-service
+npm install
+npm test
+```
+
+Or run both from project root:
+
+```bash
+(cd backend/auth-service && npm install && npm test) && (cd backend/market-service && npm install && npm test)
 ```
 
 ## Run with Kubernetes
