@@ -1,7 +1,7 @@
 // Keep runtime knobs here so service behavior is easy to tune in one place.
 export const port = Number(process.env.PORT) || 4002;
 export const historyLimit = 500;
-export const tickIntervalMs = 1000;
+export const tickIntervalMs = 2000;
 export const wsPath = "/ws";
 export const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:3110";
 
