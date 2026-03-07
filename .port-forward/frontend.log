@@ -1,0 +1,9 @@
+Forwarding from 127.0.0.1:3110 -> 3110
+Forwarding from [::1]:3110 -> 3110
+Handling connection for 3110
+Handling connection for 3110
+Handling connection for 3110
+Handling connection for 3110
+Handling connection for 3110
+Handling connection for 3110
+E0307 17:06:57.189294   55504 portforward.go:404] "Unhandled Error" err="error copying from local connection to remote stream: writeto tcp6 [::1]:3110->[::1]:53391: read tcp6 [::1]:3110->[::1]:53391: read: connection reset by peer"

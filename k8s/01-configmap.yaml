@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: multibank-config
+  namespace: multibank
+data:
+  PORT_AUTH: "4001"
+  PORT_MARKET: "4002"
+  PORT_FRONTEND: "3110"
+  HOSTNAME_FRONTEND: "0.0.0.0"
+
+  AUTH_API_URL: "http://auth-service:4001"
+
+  NEXT_PUBLIC_AUTH_API_URL: "http://localhost:4001"
+  NEXT_PUBLIC_MARKET_API_URL: "http://localhost:4002"
+  NEXT_PUBLIC_MARKET_WS_URL: "ws://localhost:4002/ws"
+  NEXT_PUBLIC_HISTORY_CACHE_TTL_MS: "30000"
+
+  CORS_ORIGIN_AUTH: "http://localhost:3110"
+  CORS_ORIGIN_MARKET: "http://localhost:3110"

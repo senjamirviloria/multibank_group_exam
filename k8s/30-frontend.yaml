@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: multibank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: multibank/frontend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3110
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: PORT_FRONTEND
+            - name: HOSTNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: HOSTNAME_FRONTEND
+            - name: AUTH_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: AUTH_API_URL
+            - name: NEXT_PUBLIC_AUTH_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: NEXT_PUBLIC_AUTH_API_URL
+            - name: NEXT_PUBLIC_MARKET_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: NEXT_PUBLIC_MARKET_API_URL
+            - name: NEXT_PUBLIC_MARKET_WS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: NEXT_PUBLIC_MARKET_WS_URL
+            - name: NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
+            - name: NEXT_PUBLIC_LOCAL_CACHE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: multibank-secret
+                  key: NEXT_PUBLIC_LOCAL_CACHE_SECRET
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3110
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3110
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 75m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: multibank
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 3110
+      targetPort: 3110
+  type: ClusterIP

@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: multibank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: multibank/auth-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4001
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: PORT_AUTH
+            - name: CORS_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: CORS_ORIGIN_AUTH
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: multibank-secret
+                  key: JWT_SECRET
+            - name: MOCK_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: multibank-secret
+                  key: MOCK_AUTH_USERNAME
+            - name: MOCK_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: multibank-secret
+                  key: MOCK_AUTH_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4001
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: multibank
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - name: http
+      port: 4001
+      targetPort: 4001
+  type: ClusterIP

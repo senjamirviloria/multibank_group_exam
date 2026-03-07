@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-service
+  namespace: multibank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: market-service
+  template:
+    metadata:
+      labels:
+        app: market-service
+    spec:
+      containers:
+        - name: market-service
+          image: multibank/market-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4002
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: PORT_MARKET
+            - name: CORS_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: multibank-config
+                  key: CORS_ORIGIN_MARKET
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: multibank-secret
+                  key: JWT_SECRET
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4002
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-service
+  namespace: multibank
+spec:
+  selector:
+    app: market-service
+  ports:
+    - name: http
+      port: 4002
+      targetPort: 4002
+  type: ClusterIP

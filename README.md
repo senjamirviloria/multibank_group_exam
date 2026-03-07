@@ -106,3 +106,117 @@ docker compose logs -f frontend
 docker compose logs -f auth-service
 docker compose logs -f market-service
 ```
+
+## Run with Kubernetes
+
+The manifests are in `k8s/`:
+
+- `00-namespace.yaml`
+- `01-configmap.yaml`
+- `02-secret.yaml`
+- `10-auth-service.yaml`
+- `20-market-service.yaml`
+- `30-frontend.yaml`
+
+### 1. Build local images
+
+From project root:
+
+```bash
+docker build -t multibank/auth-service:local backend/auth-service
+docker build -t multibank/market-service:local backend/market-service
+docker build \
+  --build-arg NEXT_PUBLIC_AUTH_API_URL=http://localhost:4001 \
+  --build-arg NEXT_PUBLIC_MARKET_API_URL=http://localhost:4002 \
+  --build-arg NEXT_PUBLIC_MARKET_WS_URL=ws://localhost:4002/ws \
+  --build-arg NEXT_PUBLIC_HISTORY_CACHE_TTL_MS=30000 \
+  --build-arg NEXT_PUBLIC_LOCAL_CACHE_SECRET=multibank-local-cache-secret \
+  -t multibank/frontend:local frontend
+```
+
+If you use `kind`, load the images:
+
+```bash
+kind load docker-image multibank/auth-service:local
+kind load docker-image multibank/market-service:local
+kind load docker-image multibank/frontend:local
+```
+
+### 2. Deploy manifests
+
+```bash
+kubectl apply -f k8s/
+kubectl -n multibank get pods
+kubectl -n multibank get svc
+```
+
+### 3. Access locally via port-forward
+
+Run these in separate terminals:
+
+```bash
+kubectl -n multibank port-forward svc/auth-service 4001:4001
+kubectl -n multibank port-forward svc/market-service 4002:4002
+kubectl -n multibank port-forward svc/frontend 3110:3110
+```
+
+Then open [http://localhost:3110](http://localhost:3110).
+
+### Scripted Kubernetes Start/Stop
+
+Use helper scripts from project root:
+
+```bash
+./scripts/kubernetes_start.sh
+./scripts/kubernetes_stop.sh
+```
+
+By default, `kubernetes_start.sh` also starts background port-forwards for:
+
+- `auth-service` -> `localhost:4001`
+- `market-service` -> `localhost:4002`
+- `frontend` -> `localhost:3110`
+
+Port-forward logs and pid files are stored in `.port-forward/`.
+`kubernetes_stop.sh` will stop these background port-forwards automatically.
+
+Optional teardown flags:
+
+```bash
+# Also delete kind cluster
+DELETE_CLUSTER=true ./scripts/kubernetes_stop.sh
+
+# Also delete local Docker images
+DELETE_IMAGES=true ./scripts/kubernetes_stop.sh
+
+# Delete both cluster and images
+DELETE_CLUSTER=true DELETE_IMAGES=true ./scripts/kubernetes_stop.sh
+```
+
+Optional script env overrides:
+
+```bash
+CLUSTER_NAME=multibank NAMESPACE=multibank ./scripts/kubernetes_start.sh
+CLUSTER_NAME=multibank NAMESPACE=multibank ./scripts/kubernetes_stop.sh
+
+# Disable background port-forwards
+PORT_FORWARD=false ./scripts/kubernetes_start.sh
+
+# Custom port-forward dir
+PORT_FORWARD_DIR=/tmp/multibank-pf ./scripts/kubernetes_start.sh
+PORT_FORWARD_DIR=/tmp/multibank-pf ./scripts/kubernetes_stop.sh
+```
+
+### 4. Update secret/config values
+
+Edit:
+
+- `k8s/01-configmap.yaml`
+- `k8s/02-secret.yaml`
+
+Then re-apply:
+
+```bash
+kubectl apply -f k8s/
+kubectl -n multibank rollout restart deploy/auth-service deploy/market-service deploy/frontend
+```
