@@ -25,7 +25,10 @@ const MARKET_WS_URL = (() => {
     return "ws://localhost:4002/ws";
   }
 })();
-const HISTORY_CACHE_TTL_MS = 30_000;
+const HISTORY_CACHE_TTL_MS = (() => {
+  const parsed = Number(process.env.NEXT_PUBLIC_HISTORY_CACHE_TTL_MS || "30000");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
+})();
 
 function formatMoney(price: number) {
   return `$${price.toLocaleString(undefined, {
