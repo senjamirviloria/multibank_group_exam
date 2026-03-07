@@ -35,6 +35,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_AUTH_API_URL: https://exam_auth_service-senjamirv.pitunnel.net
+        NEXT_PUBLIC_MARKET_API_URL: https://exam_market_service-senjamirv.pitunnel.net
+        NEXT_PUBLIC_MARKET_WS_URL: wss://exam_market_service-senjamirv.pitunnel.net/ws
+        NEXT_PUBLIC_HISTORY_CACHE_TTL_MS: 30000
     container_name: mb-frontend
     secrets:
       - source: AUTH_API_URL
@@ -43,14 +48,6 @@ services:
         target: PORT
       - source: HOSTNAME_FRONTEND
         target: HOSTNAME
-      - source: NEXT_PUBLIC_AUTH_API_URL
-        target: NEXT_PUBLIC_AUTH_API_URL
-      - source: NEXT_PUBLIC_MARKET_API_URL
-        target: NEXT_PUBLIC_MARKET_API_URL
-      - source: NEXT_PUBLIC_MARKET_WS_URL
-        target: NEXT_PUBLIC_MARKET_WS_URL
-      - source: NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
-        target: NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
     ports:
       - "3110:3110"
     depends_on:
@@ -60,14 +57,6 @@ services:
 secrets:
   AUTH_API_URL:
     file: ./secrets/AUTH_API_URL
-  NEXT_PUBLIC_AUTH_API_URL:
-    file: ./secrets/NEXT_PUBLIC_AUTH_API_URL
-  NEXT_PUBLIC_MARKET_API_URL:
-    file: ./secrets/NEXT_PUBLIC_MARKET_API_URL
-  NEXT_PUBLIC_MARKET_WS_URL:
-    file: ./secrets/NEXT_PUBLIC_MARKET_WS_URL
-  NEXT_PUBLIC_HISTORY_CACHE_TTL_MS:
-    file: ./secrets/NEXT_PUBLIC_HISTORY_CACHE_TTL_MS
   PORT_AUTH:
     file: ./secrets/PORT_AUTH
   CORS_ORIGIN_AUTH:
