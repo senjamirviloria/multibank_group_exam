@@ -1,0 +1,42 @@
+services:
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile
+    container_name: mb-auth-service
+    environment:
+      PORT: 4001
+      CORS_ORIGIN: http://localhost:3110
+      JWT_SECRET: dev-secret-change-me
+      MOCK_AUTH_USERNAME: demo@multibank.local
+      MOCK_AUTH_PASSWORD: password123
+    ports:
+      - "4001:4001"
+
+  market-service:
+    build:
+      context: ./backend/market-service
+      dockerfile: Dockerfile
+    container_name: mb-market-service
+    environment:
+      PORT: 4002
+      CORS_ORIGIN: http://localhost:3110
+    ports:
+      - "4002:4002"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mb-frontend
+    environment:
+      AUTH_API_URL: http://auth-service:4001
+      NEXT_PUBLIC_AUTH_API_URL: http://localhost:4001
+      NEXT_PUBLIC_MARKET_API_URL: http://localhost:4002
+      NEXT_PUBLIC_MARKET_WS_URL: ws://localhost:4002/ws
+      NEXT_PUBLIC_HISTORY_CACHE_TTL_MS: 30000
+    ports:
+      - "3110:3110"
+    depends_on:
+      - auth-service
+      - market-service

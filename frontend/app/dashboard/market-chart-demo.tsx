@@ -310,7 +310,7 @@ export function MarketChartDemo() {
 
           {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
-          <div className="h-[320px] w-full md:h-[420px]">
+          <div className="h-80 w-full md:h-105">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="2 2" stroke="#d6d3d1" />
@@ -347,7 +347,7 @@ export function MarketChartDemo() {
               </h3>
             </div>
 
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-100 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-slate-100 text-slate-700">
                   <tr>
