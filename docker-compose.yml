@@ -36,9 +36,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_AUTH_API_URL: https://exam_auth_service-senjamirv.pitunnel.net
-        NEXT_PUBLIC_MARKET_API_URL: https://exam_market_service-senjamirv.pitunnel.net
-        NEXT_PUBLIC_MARKET_WS_URL: wss://exam_market_service-senjamirv.pitunnel.net/ws
+        NEXT_PUBLIC_AUTH_API_URL: https://exam_auth_service-senjamirv.pitunnel.com
+        NEXT_PUBLIC_MARKET_API_URL: https://exam_market_service-senjamirv.pitunnel.com
+        NEXT_PUBLIC_MARKET_WS_URL: wss://exam_market_service-senjamirv.as2.pitunnel.com/ws
         NEXT_PUBLIC_HISTORY_CACHE_TTL_MS: 30000
     container_name: mb-frontend
     secrets:
